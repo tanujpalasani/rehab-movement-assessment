@@ -23,12 +23,12 @@ This project helps by:
 
 ### End-to-end pipeline
 
-Video Input -> Pose Detection -> Angle Calculation -> ROM Tracking -> Feedback
+Video Input -> Pose + Classical Tracking -> Angle Calculation -> ROM Tracking -> Feedback
 
 Detailed meaning:
 
 - Video Input: Webcam provides frame-by-frame video
-- Pose Detection: MediaPipe detects key body landmarks (shoulder, elbow, hip, knee, ankle, etc.)
+- Pose + Tracking: MediaPipe detects key body landmarks, and optical-flow tracking maintains continuity across brief detection drops
 - Angle Calculation: Joint angle is computed from three landmark points
 - ROM Tracking: Minimum and maximum observed angles are tracked to compute ROM
 - Feedback: Status, ROM quality, and corrective hints are displayed in UI
@@ -42,14 +42,16 @@ Detailed meaning:
 	- Start Exercise
 	- Instructions
 - Live camera runtime with a threaded worker
-- Pose detection using MediaPipe Pose (when backend is available)
+- Hybrid tracking using MediaPipe PoseLandmarker + Lucas-Kanade optical flow fallback
 - Joint angle computation using geometric angle function
 - ROM tracking over time (min/max angle based)
 - Repetition counting using phase transitions (low angle <-> high angle)
 - Exercise-specific evaluation for:
 	- Elbow Flexion
 	- Squat
-	- Shoulder Raise
+	- Shoulder Abduction
+	- Wrist Flexion
+	- Hip Flexion
 - On-frame and panel feedback:
 	- Angle
 	- ROM
@@ -206,6 +208,14 @@ streamlit run ui/streamlit_app.py
 
 Then open the URL shown in the terminal (usually http://localhost:8501).
 
+Windows PowerShell quick-start (optional):
+
+```powershell
+.\run_app.ps1
+```
+
+This helper script creates `.venv` (if missing), installs dependencies, and launches Streamlit.
+
 ### Step 6 (optional): Run tests
 
 ```bash
@@ -228,7 +238,7 @@ Use Python 3.11 for best MediaPipe Pose compatibility in this project.
 
 - Each selected frame is passed to PoseDetector.get_pose()
 - Frame is converted from BGR to RGB
-- MediaPipe Pose predicts landmark locations
+- MediaPipe PoseLandmarker predicts landmark locations
 - Landmarks with low visibility are filtered out
 - Named coordinate dictionary is built (for example right_shoulder, right_elbow, right_wrist)
 
@@ -251,7 +261,7 @@ ROM = max_angle - min_angle
 - ExerciseEvaluator compares current angle with target ranges
 - Status is set to Correct or Incorrect
 - Hint text is generated (too low / too high / good posture)
-- ROM quality is categorized (incomplete / try more / good)
+- ROM quality is categorized (poor / fair / good)
 - Repetitions are counted by low-to-high phase transitions
 
 ### 6) UI update
@@ -284,7 +294,7 @@ ROM = max_angle - min_angle
 4. Select one exercise from sidebar.
 5. Click Start Detection.
 6. Stand around 1.5 to 2 meters from camera.
-7. Keep your full right side visible (shoulder to ankle).
+7. Keep the target side fully visible (right side for right-side exercises, left side for left-side exercises).
 8. Perform movement slowly and smoothly.
 9. Watch Angle, ROM, Reps, Status, and Hint values.
 10. Click Stop Detection when done.
@@ -299,7 +309,7 @@ ROM = max_angle - min_angle
 ## 8. Known Issues / Limitations
 
 - Accuracy depends on camera quality, lighting, occlusion, and user orientation
-- Current exercise definitions are right-side dominant (right-side landmarks)
+- Accuracy may differ by side depending on camera setup and lighting
 - No patient profile, history storage, or progress database yet
 - No therapist dashboard or report export yet
 - Camera access can fail due to OS permissions or occupied device

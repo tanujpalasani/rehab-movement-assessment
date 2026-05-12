@@ -15,8 +15,8 @@ class ExerciseConfig:
     high_hint: str
     rep_low: float
     rep_high: float
-    # Clinical Refinements
-    max_speed: float = 750.0  # degrees per SECOND threshold for "Too Fast"
+    # Clinical refinements
+    max_speed: float = 750.0  # degrees per second threshold for "Too Fast"
     jerk_threshold: float = 300.0  # velocity variance threshold for jerkiness
     display_threshold: float = 15.0  # ROM needed to show panel
     # Rep direction: "low_first" means you go below rep_low then above rep_high.
@@ -28,7 +28,7 @@ class ExerciseConfig:
 
 
 EXERCISE_CONFIGS: Dict[str, ExerciseConfig] = {
-    # ELBOWS — bend first (angle decreases), then straighten (angle increases)
+    # ELBOWS - bend first (angle decreases), then straighten (angle increases)
     "right_elbow_flexion": ExerciseConfig(
         key="right_elbow_flexion", title="R Elbow Flexion", side="right",
         description="Bend and extend your right elbow.",
@@ -49,7 +49,7 @@ EXERCISE_CONFIGS: Dict[str, ExerciseConfig] = {
         rep_direction="low_first",
         phase_a_label="Bending", phase_b_label="Straightening"
     ),
-    # SHOULDERS — raise arm (angle decreases toward 35), lower (increases toward 120)
+    # SHOULDERS - raise arm (angle decreases toward 35), lower (increases toward 120)
     "right_shoulder_abduction": ExerciseConfig(
         key="right_shoulder_abduction", title="R Shoulder Abduction", side="right",
         description="Raise your right arm sideways. 120 safety cap.",
@@ -70,7 +70,7 @@ EXERCISE_CONFIGS: Dict[str, ExerciseConfig] = {
         rep_direction="low_first",
         phase_a_label="Raising", phase_b_label="Lowering"
     ),
-    # KNEES — bend (angle decreases), stand (angle increases)
+    # KNEES - bend (angle decreases), stand (angle increases)
     "right_squat": ExerciseConfig(
         key="right_squat", title="R Knee Flexion", side="right",
         description="Lower and rise smoothly.",
@@ -91,13 +91,13 @@ EXERCISE_CONFIGS: Dict[str, ExerciseConfig] = {
         rep_direction="low_first",
         phase_a_label="Squatting", phase_b_label="Rising"
     ),
-    # WRISTS — angle is 0-180 (clamped by angle.py).
-    # Neutral wrist ≈ 180 (straight forearm-to-finger), but clamping means neutral ≈ 170-180.
-    # Flexion bends the wrist → angle decreases from ~170 toward ~100.
+    # WRISTS - angle is 0-180 (clamped by angle.py).
+    # Neutral wrist ~= 180 (straight forearm-to-finger), but clamping means neutral ~= 170-180.
+    # Flexion bends the wrist -> angle decreases from ~170 toward ~100.
     # Ranges adjusted to fit within the 0-180 output.
     "right_wrist_flexion": ExerciseConfig(
         key="right_wrist_flexion", title="R Wrist Flex", side="right",
-        description="Flex wrist. Neutral ≈ 170-180°, flexion reduces angle.",
+        description="Flex wrist. Neutral ~= 170-180 deg, flexion reduces angle.",
         triplet=("right_elbow", "right_wrist", "right_index"),
         target_min=100.0, target_max=175.0,
         low_hint="Extend wrist back.", high_hint="Flex wrist more.",
@@ -107,7 +107,7 @@ EXERCISE_CONFIGS: Dict[str, ExerciseConfig] = {
     ),
     "left_wrist_flexion": ExerciseConfig(
         key="left_wrist_flexion", title="L Wrist Flex", side="left",
-        description="Flex wrist. Neutral ≈ 170-180°, flexion reduces angle.",
+        description="Flex wrist. Neutral ~= 170-180 deg, flexion reduces angle.",
         triplet=("left_elbow", "left_wrist", "left_index"),
         target_min=100.0, target_max=175.0,
         low_hint="Extend wrist back.", high_hint="Flex wrist more.",
@@ -115,7 +115,7 @@ EXERCISE_CONFIGS: Dict[str, ExerciseConfig] = {
         rep_direction="low_first",
         phase_a_label="Flexing", phase_b_label="Extending"
     ),
-    # HIPS — raise knee (angle decreases), lower (angle increases)
+    # HIPS - raise knee (angle decreases), lower (angle increases)
     "right_hip_flexion": ExerciseConfig(
         key="right_hip_flexion", title="R Hip Flexion", side="right",
         description="Raise knee toward chest.",

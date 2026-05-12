@@ -75,6 +75,12 @@ pip install -r requirements.txt
 streamlit run ui/streamlit_app.py
 ```
 
+Optional (Windows PowerShell one-command launcher):
+
+```powershell
+.\run_app.ps1
+```
+
 ### 6) Run tests
 
 ```bash

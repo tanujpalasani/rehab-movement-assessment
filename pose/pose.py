@@ -40,6 +40,8 @@ class PoseDetector:
         self.unavailable_reason = "" if self.available else f"Model file not found: {_MODEL_PATH}"
         self._latest_result = None
         self._timestamp_ms = 0
+        self._prev_gray = None
+        self._prev_coords: Dict[str, Tuple[float, float]] = {}
 
         if self.available:
             base_options = mp_python.BaseOptions(
@@ -69,12 +71,15 @@ class PoseDetector:
                 self.landmarker.close()
             except Exception:
                 pass
+        self._prev_gray = None
+        self._prev_coords = {}
 
     def get_pose(self, frame) -> Tuple[cv2.typing.MatLike, Dict[str, Tuple[float, float]]]:
         if self.landmarker is None:
             return frame, {}
 
         h, w, _ = frame.shape
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Convert BGR to RGB and create MediaPipe Image
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -84,7 +89,7 @@ class PoseDetector:
         self._timestamp_ms += 33  # ~30 fps
         self.landmarker.detect_async(mp_image, self._timestamp_ms)
 
-        coords = {}
+        coords: Dict[str, Tuple[float, float]] = {}
 
         if self._latest_result and self._latest_result.pose_landmarks:
             pose_landmarks = self._latest_result.pose_landmarks[0]  # First person
@@ -105,8 +110,62 @@ class PoseDetector:
 
             # Draw skeleton on frame
             self._draw_landmarks(frame, pose_landmarks, h, w)
+        elif self._prev_gray is not None and self._prev_coords:
+            tracked = self._track_with_optical_flow(self._prev_gray, gray, self._prev_coords)
+            if tracked:
+                coords = tracked
+                self._draw_tracked_skeleton(frame, coords)
+
+        self._prev_gray = gray
+        if coords:
+            self._prev_coords = {
+                name: value for name, value in coords.items()
+                if name in _JOINT_MAP
+            }
 
         return frame, coords
+
+    def _track_with_optical_flow(
+        self,
+        prev_gray,
+        gray,
+        prev_coords: Dict[str, Tuple[float, float]],
+    ) -> Dict[str, Tuple[float, float]]:
+        names = list(prev_coords.keys())
+        if not names:
+            return {}
+
+        prev_points = np.array([prev_coords[name] for name in names], dtype=np.float32).reshape(-1, 1, 2)
+        next_points, status, _ = cv2.calcOpticalFlowPyrLK(
+            prev_gray,
+            gray,
+            prev_points,
+            None,
+            winSize=(15, 15),
+            maxLevel=2,
+            criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03),
+        )
+        if next_points is None or status is None:
+            return {}
+
+        h, w = gray.shape[:2]
+        coords: Dict[str, Tuple[float, float]] = {}
+        for idx, name in enumerate(names):
+            if status[idx][0] != 1:
+                continue
+            x, y = next_points[idx][0]
+            if x < 0 or y < 0 or x >= w or y >= h:
+                continue
+            coords[name] = (float(x), float(y))
+
+        if "right_shoulder" in coords:
+            coords["shoulder"] = coords["right_shoulder"]
+        if "right_elbow" in coords:
+            coords["elbow"] = coords["right_elbow"]
+        if "right_wrist" in coords:
+            coords["wrist"] = coords["right_wrist"]
+
+        return coords
 
     def _draw_landmarks(self, frame, landmarks, h, w):
         """Draw pose landmarks and connections on the frame."""
@@ -134,3 +193,30 @@ class PoseDetector:
                 continue
             cx, cy = int(lm.x * w), int(lm.y * h)
             cv2.circle(frame, (cx, cy), 5, (0, 0, 255), -1)
+
+    def _draw_tracked_skeleton(self, frame, coords: Dict[str, Tuple[float, float]]) -> None:
+        connections = [
+            ("left_shoulder", "right_shoulder"),
+            ("left_shoulder", "left_elbow"),
+            ("left_elbow", "left_wrist"),
+            ("right_shoulder", "right_elbow"),
+            ("right_elbow", "right_wrist"),
+            ("left_shoulder", "left_hip"),
+            ("right_shoulder", "right_hip"),
+            ("left_hip", "right_hip"),
+            ("left_hip", "left_knee"),
+            ("left_knee", "left_ankle"),
+            ("right_hip", "right_knee"),
+            ("right_knee", "right_ankle"),
+        ]
+        for a, b in connections:
+            if a in coords and b in coords:
+                ax, ay = coords[a]
+                bx, by = coords[b]
+                cv2.line(frame, (int(ax), int(ay)), (int(bx), int(by)), (0, 180, 255), 2)
+
+        for name in _JOINT_MAP:
+            if name not in coords:
+                continue
+            x, y = coords[name]
+            cv2.circle(frame, (int(x), int(y)), 4, (255, 140, 0), -1)

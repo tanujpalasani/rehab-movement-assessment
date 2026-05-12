@@ -93,6 +93,29 @@ class TestExerciseEvaluator(unittest.TestCase):
         self.assertTrue(fair_seen)
         self.assertEqual(m3.rom_feedback, "Good ROM")
 
+    def test_update_config_resets_state(self):
+        evaluator = ExerciseEvaluator(get_exercise_config("right_elbow_flexion"))
+        coords_low = {
+            "right_shoulder": (0, 1),
+            "right_elbow": (0, 0),
+            "right_wrist": (1, 1),
+        }
+        coords_high = {
+            "right_shoulder": (-1, 0),
+            "right_elbow": (0, 0),
+            "right_wrist": (1, 0),
+        }
+
+        for _ in range(8):
+            evaluator.evaluate(coords_low)
+        for _ in range(12):
+            evaluator.evaluate(coords_high)
+
+        self.assertGreaterEqual(evaluator.reps, 1)
+        evaluator.update_config(get_exercise_config("left_elbow_flexion"))
+        self.assertEqual(evaluator.reps, 0)
+        self.assertEqual(evaluator._phase, "Ready")
+
 
 if __name__ == "__main__":
     unittest.main()

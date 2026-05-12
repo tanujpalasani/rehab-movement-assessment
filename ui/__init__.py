@@ -1,3 +1,3 @@
-from .ui import render_multi_exercise_overlay
+from .ui import render_exercise_overlay, render_multi_exercise_overlay, render_ui
 
-__all__ = ["render_multi_exercise_overlay"]
+__all__ = ["render_exercise_overlay", "render_multi_exercise_overlay", "render_ui"]

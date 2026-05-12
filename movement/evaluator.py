@@ -36,6 +36,21 @@ class ExerciseEvaluator:
         # Bug 4 fix: Rolling velocity buffer for jerkiness detection
         self._velocity_buffer: deque = deque(maxlen=10)
 
+    def reset(self) -> None:
+        self.rom_tracker = MovementAnalyzer(filter_alpha=0.3)
+        self.reps = 0
+        self._phase = "Ready"
+        self._prev_smoothed_angle = None
+        self._prev_time = None
+        self._speed_warning = False
+        self._jerk_warning = False
+        self._velocity_buffer.clear()
+
+    def update_config(self, config: ExerciseConfig, reset_state: bool = True) -> None:
+        self.config = config
+        if reset_state:
+            self.reset()
+
     def evaluate(self, coords: Dict[str, tuple]) -> Optional[ExerciseMetrics]:
         point_names = self.config.triplet
         if not all(name in coords for name in point_names):
@@ -52,7 +67,7 @@ class ExerciseEvaluator:
         rom, _, _ = self.rom_tracker.update(angle)
         smoothed_angle = self.rom_tracker.smoothed_angle
 
-        # 1. Speed Tracking — Bug 1 fix: use config.max_speed; Bug 5 fix: use smoothed angle
+        # 1. Speed Tracking - Bug 1 fix: use config.max_speed; Bug 5 fix: use smoothed angle
         self._speed_warning = False
         self._jerk_warning = False
         if self._prev_smoothed_angle is not None and self._prev_time is not None:
@@ -77,7 +92,7 @@ class ExerciseEvaluator:
         self._prev_smoothed_angle = smoothed_angle
         self._prev_time = now
 
-        # 3. Rep counting — Bug 3 fix: direction-aware; Bug 6 fix: clean Ready transition
+        # 3. Rep counting - Bug 3 fix: direction-aware; Bug 6 fix: clean Ready transition
         self._update_reps(smoothed_angle)
 
         # 4. Status & Hint
@@ -121,8 +136,8 @@ class ExerciseEvaluator:
         """
         Direction-aware rep state machine.
         
-        "low_first": Ready → phase_a (angle <= rep_low) → phase_b (angle >= rep_high) → rep++ → Ready
-        "high_first": Ready → phase_a (angle >= rep_high) → phase_b (angle <= rep_low) → rep++ → Ready
+        "low_first": Ready -> phase_a (angle <= rep_low) -> phase_b (angle >= rep_high) -> rep++ -> Ready
+        "high_first": Ready -> phase_a (angle >= rep_high) -> phase_b (angle <= rep_low) -> rep++ -> Ready
         """
         cfg = self.config
         a_label = cfg.phase_a_label
@@ -147,3 +162,5 @@ class ExerciseEvaluator:
                 self._phase = "Ready"
         elif self._phase not in ("Ready", a_label, b_label):
             self._phase = "Ready"
+
+

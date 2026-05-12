@@ -10,6 +10,16 @@ _GROUP_COLORS = {
 }
 
 
+def _to_int_point(point):
+    """Return a safe OpenCV point tuple (int, int) or None."""
+    if point is None or not isinstance(point, (tuple, list)) or len(point) != 2:
+        return None
+    try:
+        return (int(point[0]), int(point[1]))
+    except (TypeError, ValueError):
+        return None
+
+
 def render_multi_exercise_overlay(frame, exercise_metrics_list):
     """Render a dynamic bilateral dashboard with clinical feedback."""
     fh, fw = frame.shape[:2]
@@ -45,7 +55,7 @@ def render_multi_exercise_overlay(frame, exercise_metrics_list):
         if y_offset + panel_h > fh:
             continue
 
-        # Background & border — highlight on warnings
+        # Background & border - highlight on warnings
         has_warning = ex.get("speed_warning") or ex.get("jerk_warning")
         bg_color = (10, 10, 50) if has_warning else (18, 18, 18)
         border_color = (0, 0, 255) if has_warning else colors["border"]
@@ -96,7 +106,7 @@ def render_multi_exercise_overlay(frame, exercise_metrics_list):
         cv2.putText(frame, rom_text, (x_text, y), font, 0.3 * scale, rom_color, 1)
 
         # Joint Point Angle on body
-        joint_point = ex.get("joint_point")
+        joint_point = _to_int_point(ex.get("joint_point"))
         if joint_point is not None:
             cv2.circle(frame, joint_point, max(2, int(4 * scale)), colors["title"], -1)
             cv2.putText(frame, f"{int(ex['angle'])}",
@@ -104,3 +114,60 @@ def render_multi_exercise_overlay(frame, exercise_metrics_list):
                         font, 0.4 * scale, colors["title"], 1)
 
     return frame
+
+
+def render_exercise_overlay(
+    frame,
+    exercise_title,
+    angle,
+    rom,
+    reps,
+    status,
+    rom_feedback,
+    hint,
+    joint_point=None,
+):
+    """Backward-compatible single-exercise overlay wrapper."""
+    exercise_metrics = [
+        {
+            "title": exercise_title,
+            "side": "left",
+            "angle": angle,
+            "rom": rom,
+            "reps": reps,
+            "status": status,
+            "phase": "N/A",
+            "rom_feedback": rom_feedback,
+            "hint": hint,
+            "joint_point": joint_point,
+            "speed_warning": False,
+            "jerk_warning": False,
+        }
+    ]
+    return render_multi_exercise_overlay(frame, exercise_metrics)
+
+
+def render_ui(
+    frame,
+    exercise_title,
+    angle,
+    rom,
+    reps,
+    status,
+    rom_feedback,
+    hint,
+    joint_point=None,
+):
+    """Legacy alias kept for compatibility with older imports."""
+    return render_exercise_overlay(
+        frame,
+        exercise_title,
+        angle,
+        rom,
+        reps,
+        status,
+        rom_feedback,
+        hint,
+        joint_point,
+    )
+

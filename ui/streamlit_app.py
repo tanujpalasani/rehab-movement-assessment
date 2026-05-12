@@ -163,24 +163,28 @@ class CameraWorker:
                         "reps": self.evaluator.reps,
                         "status": "No person detected",
                         "rom_feedback": "Incomplete movement",
-                        "hint": "Keep your full right side visible to the camera.",
+                        "hint": "Keep the target side fully visible to the camera.",
                         "joint_point": None,
                     }
 
                 self.latest_metrics = metrics
 
-            frame = render_exercise_overlay(
-                frame,
-                metrics["exercise_title"],
-                metrics["angle"],
-                metrics["rom"],
-                metrics["reps"],
-                metrics["status"],
-                metrics["rom_feedback"],
-                metrics["hint"],
-                metrics["joint_point"],
-            )
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            try:
+                frame = render_exercise_overlay(
+                    frame,
+                    metrics["exercise_title"],
+                    metrics["angle"],
+                    metrics["rom"],
+                    metrics["reps"],
+                    metrics["status"],
+                    metrics["rom_feedback"],
+                    metrics["hint"],
+                    metrics["joint_point"],
+                )
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            except cv2.error:
+                # Keep worker alive on rare overlay/type issues and continue next frame.
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             with self.lock:
                 self.latest_frame_rgb = frame_rgb
@@ -210,9 +214,16 @@ def _ensure_runtime_state() -> None:
     if "camera_placeholder" not in st.session_state:
         st.session_state.camera_placeholder = None
     if "selected_exercise" not in st.session_state:
-        st.session_state.selected_exercise = "elbow_flexion"
+        st.session_state.selected_exercise = "right_elbow_flexion"
     if "metrics_placeholder" not in st.session_state:
         st.session_state.metrics_placeholder = None
+
+    # Normalize legacy/stale keys persisted in session state so selectbox index lookup is safe.
+    try:
+        resolved_key = get_exercise_config(st.session_state.selected_exercise).key
+    except KeyError:
+        resolved_key = "right_elbow_flexion"
+    st.session_state.selected_exercise = resolved_key
 
 
 def _start_runtime() -> bool:
@@ -311,7 +322,7 @@ def _render_home_page() -> None:
 
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.info("Exercises: Elbow Flexion, Squat, Shoulder Raise")
+        st.info("Exercises: Elbow, Shoulder, Squat, Wrist, Hip (Left + Right)")
     with c2:
         st.info("Live Metrics: Angle, ROM, Repetition Count")
     with c3:
@@ -323,7 +334,7 @@ def _render_instructions_page() -> None:
     st.markdown(
         """
 1. Stand 1.5 to 2 meters away from the camera.
-2. Keep your full right side visible (shoulder, elbow, hip, knee, ankle).
+2. Keep the target exercise side fully visible (shoulder, elbow, hip, knee, ankle).
 3. Select an exercise from the sidebar.
 4. Press Start Detection and move smoothly.
 5. Use Stop Detection before changing camera setup.
@@ -335,6 +346,9 @@ def _render_instructions_page() -> None:
 
 def _render_start_exercise_page() -> None:
     options = list(EXERCISE_CONFIGS.keys())
+    if st.session_state.selected_exercise not in options:
+        st.session_state.selected_exercise = "right_elbow_flexion"
+
     selected = st.sidebar.selectbox(
         "Select Exercise",
         options=options,
