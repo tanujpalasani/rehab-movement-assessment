@@ -213,10 +213,14 @@ def _ensure_runtime_state() -> None:
         st.session_state.camera_worker = None
     if "camera_placeholder" not in st.session_state:
         st.session_state.camera_placeholder = None
+    if "camera_panel_placeholder" not in st.session_state:
+        st.session_state.camera_panel_placeholder = None
     if "selected_exercise" not in st.session_state:
         st.session_state.selected_exercise = "right_elbow_flexion"
     if "metrics_placeholder" not in st.session_state:
         st.session_state.metrics_placeholder = None
+    if "metrics_panel_placeholder" not in st.session_state:
+        st.session_state.metrics_panel_placeholder = None
 
     # Normalize legacy/stale keys persisted in session state so selectbox index lookup is safe.
     try:
@@ -249,7 +253,9 @@ def _stop_runtime() -> None:
 
     st.session_state.camera_worker = None
     st.session_state.camera_placeholder = None
+    st.session_state.camera_panel_placeholder = None
     st.session_state.metrics_placeholder = None
+    st.session_state.metrics_panel_placeholder = None
     st.session_state.camera_running = False
 
 
@@ -273,15 +279,24 @@ def run_camera_stream() -> None:
 
     metrics = worker.get_metrics()
 
+    if st.session_state.camera_panel_placeholder is None:
+        st.session_state.camera_panel_placeholder = st.empty()
+    if st.session_state.metrics_panel_placeholder is None:
+        st.session_state.metrics_panel_placeholder = st.empty()
+
     if st.session_state.camera_placeholder is None:
-        st.session_state.camera_placeholder = st.empty()
+        with st.session_state.camera_panel_placeholder.container():
+            st.markdown("#### Live Monitoring")
+            st.session_state.camera_placeholder = st.empty()
     if st.session_state.metrics_placeholder is None:
-        st.session_state.metrics_placeholder = st.empty()
+        with st.session_state.metrics_panel_placeholder.container():
+            st.markdown("#### Results")
+            st.session_state.metrics_placeholder = st.empty()
 
     st.session_state.camera_placeholder.image(
         frame,
         channels="RGB",
-        width="stretch",
+        use_container_width=True,
     )
 
     status_is_correct = metrics["status"] == "Correct"
@@ -371,6 +386,25 @@ def _render_start_exercise_page() -> None:
     with col2:
         if st.button("Stop Detection", width="stretch"):
             _stop_runtime()
+
+    st.markdown(
+        """
+        <style>
+        [data-testid="stImage"] img {
+            max-height: 62vh;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    monitor_col, result_col = st.columns([1.8, 1.2], gap="medium")
+    with monitor_col:
+        st.session_state.camera_panel_placeholder = st.empty()
+    with result_col:
+        st.session_state.metrics_panel_placeholder = st.empty()
 
     camera_fragment()
 
